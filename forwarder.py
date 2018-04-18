@@ -78,18 +78,20 @@ class MQTTSource(MessageSource):
 
     logger = logging.getLogger("forwarder.MQTTSource")
 
-    def __init__(self, host, port, username, password_file, node_names, stringify_values_for_measurements):
+    def __init__(self, host, port, username, password_file, client_id, transport, node_names, stringify_values_for_measurements):
         self.host = host
         self.port = port
         self.username = username
         if password_file is not None:
             self.password = open(password_file).read().strip()
+        self.client_id = client_id
+        self.transport = transport
         self.node_names = node_names
         self.stringify = stringify_values_for_measurements
         self._setup_handlers()
 
     def _setup_handlers(self):
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(client_id=self.client_id, transport=self.transport)
         if self.username is not None:
             self.client.username_pw_set(self.username, password = self.password)
 
@@ -167,6 +169,8 @@ def main():
     parser.add_argument('--mqtt-port', default="1883", help='MQTT port')
     parser.add_argument('--mqtt-user', required=False, help='MQTT username')
     parser.add_argument('--mqtt-pass-file', required=False, help='MQTT user password file')
+    parser.add_argument('--mqtt-client-id', default="", help='MQTT client id')
+    parser.add_argument('--mqtt-transport', default="tcp", help='MQTT transport')
     parser.add_argument('--influx-host', required=True, help='InfluxDB host')
     parser.add_argument('--influx-port', default="8086", help='InfluxDB port')
     parser.add_argument('--influx-user', required=True,
@@ -191,6 +195,7 @@ def main():
             username=args.influx_user, password_file=args.influx_pass_file, database=args.influx_db)
     source = MQTTSource(host=args.mqtt_host, port=args.mqtt_port, 
                         username=args.mqtt_user, password_file=args.mqtt_pass_file,
+                        client_id=args.mqtt_client_id, transport=args.mqtt_transport,
                         node_names=args.node_name,
                         stringify_values_for_measurements=args.stringify_values_for_measurements)
     source.register_store(store)
