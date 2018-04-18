@@ -94,7 +94,7 @@ class MQTTSource(MessageSource):
         self.client = mqtt.Client(client_id=self.client_id, transport=self.transport)
         if self.username is not None:
             self.client.username_pw_set(self.username, password = self.password)
-
+        
         def on_connect(client, userdata, flags, rc):
             self.logger.info("Connected with result code  %s", rc)
             # subscribe to /node_name/wildcard
@@ -180,7 +180,7 @@ def main():
     parser.add_argument('--influx-db', required=True, help='InfluxDB database')
     parser.add_argument('--node-name', required=True,
                         help='Sensor node name', action="append")
-    parser.add_argument('--stringify-values-for-measurements', required=False,
+    parser.add_argument('--stringify-values-for-measurements', required=False, default="",
                         help='Force str() on measurements of the given name', action="append")
     parser.add_argument('--verbose', help='Enable verbose output to stdout',
                         default=False, action='store_true')
