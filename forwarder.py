@@ -78,15 +78,20 @@ class MQTTSource(MessageSource):
 
     logger = logging.getLogger("forwarder.MQTTSource")
 
-    def __init__(self, host, port, node_names, stringify_values_for_measurements):
+    def __init__(self, host, port, username, password_file, node_names, stringify_values_for_measurements):
         self.host = host
         self.port = port
+        self.username = username
+        if password_file is not None:
+            self.password = open(password_file).read().strip()
         self.node_names = node_names
         self.stringify = stringify_values_for_measurements
         self._setup_handlers()
 
     def _setup_handlers(self):
         self.client = mqtt.Client()
+        if self.username is not None:
+            self.client.username_pw_set(self.username, password = self.password)
 
         def on_connect(client, userdata, flags, rc):
             self.logger.info("Connected with result code  %s", rc)
@@ -160,6 +165,8 @@ def main():
         description='MQTT to InfluxDB bridge for IOT data.')
     parser.add_argument('--mqtt-host', required=True, help='MQTT host')
     parser.add_argument('--mqtt-port', default="1883", help='MQTT port')
+    parser.add_argument('--mqtt-user', required=False, help='MQTT username')
+    parser.add_argument('--mqtt-pass-file', required=False, help='MQTT user password file')
     parser.add_argument('--influx-host', required=True, help='InfluxDB host')
     parser.add_argument('--influx-port', default="8086", help='InfluxDB port')
     parser.add_argument('--influx-user', required=True,
@@ -182,8 +189,9 @@ def main():
 
     store = InfluxStore(host=args.influx_host, port=args.influx_port,
             username=args.influx_user, password_file=args.influx_pass_file, database=args.influx_db)
-    source = MQTTSource(host=args.mqtt_host,
-                        port=args.mqtt_port, node_names=args.node_name,
+    source = MQTTSource(host=args.mqtt_host, port=args.mqtt_port, 
+                        username=args.mqtt_user, password_file=args.mqtt_pass_file,
+                        node_names=args.node_name,
                         stringify_values_for_measurements=args.stringify_values_for_measurements)
     source.register_store(store)
     source.start()
