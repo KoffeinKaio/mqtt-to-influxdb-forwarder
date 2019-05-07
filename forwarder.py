@@ -80,7 +80,7 @@ class MQTTSource(MessageSource):
 
     def __init__(self, host, port, username, password_file, client_id, transport, node_names, stringify_values_for_measurements):
         self.host = host
-        self.port = port
+        self.port = int(port)
         self.username = username
         if password_file is not None:
             self.password = open(password_file).read().strip()
