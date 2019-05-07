@@ -107,9 +107,9 @@ class MQTTSource(MessageSource):
         def on_message(client, userdata, msg):
             self.logger.debug(
                 "Received MQTT message for topic %s with payload %s", msg.topic, msg.payload)
-            token_pattern = ur'(?:\w|-|\.)+'
+            token_pattern = r'(?:\w|-|\.)+'
             regex = re.compile(
-                ur'/(?P<node_name>' + token_pattern + ')/(?P<measurement_name>' + token_pattern + ')/?')
+                r'/(?P<node_name>' + token_pattern + ')/(?P<measurement_name>' + token_pattern + ')/?')
             match = regex.match(msg.topic)
             if match is None:
                 self.logger.warn(
