@@ -30,7 +30,6 @@ import requests.exceptions
 
 
 class MessageStore(object):
-
     def store_msg(self, node_name, measurement_name, value):
         raise NotImplementedError()
 
@@ -62,7 +61,6 @@ class InfluxStore(MessageStore):
 
 
 class MessageSource(object):
-
     def register_store(self, store):
         if not hasattr(self, '_stores'):
             self._stores = []
@@ -122,12 +120,12 @@ class MQTTSource(MessageSource):
                     topic_prefix=self.topic_prefix, token_pattern=token_pattern))
             match = regex.match(msg.topic)
             if match is None:
-                self.logger.warn(
+                self.logger.warning(
                     "Could not extract node name or measurement name from topic %s", msg.topic)
                 return
             node_name = match.group('node_name')
             if node_name not in self.node_names:
-                self.logger.warn(
+                self.logger.warning(
                     "Extract node_name %s from topic, but requested to receive messages for node_names %s", node_name,
                     str(self.node_names))
             measurement_name = match.group('measurement_name')
@@ -209,7 +207,7 @@ def main():
                         username=args.mqtt_user, password_file=args.mqtt_pass_file,
                         client_id=args.mqtt_client_id, transport=args.mqtt_transport,
                         node_names=args.node_name, topic_prefix=args.mqtt_topic_prefix,
-                        stringify_values_for_measurements = args.stringify_values_for_measurements)
+                        stringify_values_for_measurements=args.stringify_values_for_measurements)
     source.register_store(store)
     source.start()
 
