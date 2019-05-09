@@ -118,7 +118,7 @@ class MQTTSource(MessageSource):
             node_name = match.group('node_name')
             if node_name not in self.node_names:
                 self.logger.warn(
-                    "Extract node_name %s from topic, but requested to receive messages for node_name %s", node_name, self.node_name)
+                    "Extract node_name %s from topic, but requested to receive messages for node_names %s", node_name, str(self.node_names))
             measurement_name = match.group('measurement_name')
 
             value = msg.payload
