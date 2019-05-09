@@ -17,7 +17,7 @@ a float.
 A simple weather station with some sensors may publish its data like this:
 
     /weather/uv: 0 (UV indev)
-    /weather/temp: 18.80 (Â°C)
+    /weather/temp: 18.80 (°C)
     /weather/pressure: 1010.77 (hPa)
     /weather/bat: 4.55 (V)
 
@@ -25,6 +25,17 @@ Here, 'weather' is the node name and 'humidity', 'light' and 'temperature' are
 measurement names. 0, 18.80, 1010.88 and 4.55 are measurement values. The units
 are not transmitted, so any consumer of the data has to know how to interpret
 the raw values.
+
+It is possible to ignore the prefix of an mqtt topic for parsing the node name.
+
+    /home/weather/uv: 0 (UV indev)
+    /home/weather/temp: 18.80 (°C)
+    /home/weather/pressure: 1010.77 (hPa)
+    /home/weather/bat: 4.55 (V)
+
+In case for example `home` is specified via the parameter `--mqtt-topic-prefix`, 
+that prefix will be removed from the topic name and the measurement and values send 
+to influxdb will be equal to the above.
 
 ## Translation to InfluxDB data structure ##
 

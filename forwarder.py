@@ -34,8 +34,8 @@ class MessageStore(object):
     def store_msg(self, node_name, measurement_name, value):
         raise NotImplementedError()
 
-class InfluxStore(MessageStore):
 
+class InfluxStore(MessageStore):
     logger = logging.getLogger("forwarder.InfluxStore")
 
     def __init__(self, host, port, username, password_file, database):
@@ -43,7 +43,6 @@ class InfluxStore(MessageStore):
         self.influx_client = InfluxDBClient(
             host=host, port=port, username=username, password=password, database=database)
         # influx_client.create_database('sensors')
-
 
     def store_msg(self, node_name, measurement_name, data):
         if not isinstance(data, dict):
@@ -61,6 +60,7 @@ class InfluxStore(MessageStore):
         except requests.exceptions.ConnectionError as e:
             self.logger.exception(e)
 
+
 class MessageSource(object):
 
     def register_store(self, store):
@@ -75,10 +75,10 @@ class MessageSource(object):
 
 
 class MQTTSource(MessageSource):
-
     logger = logging.getLogger("forwarder.MQTTSource")
 
-    def __init__(self, host, port, username, password_file, client_id, transport, node_names, stringify_values_for_measurements):
+    def __init__(self, host, port, username, password_file, client_id, transport, node_names, topic_prefix,
+                 stringify_values_for_measurements):
         self.host = host
         self.port = int(port)
         self.username = username
@@ -87,19 +87,28 @@ class MQTTSource(MessageSource):
         self.client_id = client_id
         self.transport = transport
         self.node_names = node_names
+        self.topic_prefix = topic_prefix
         self.stringify = stringify_values_for_measurements
         self._setup_handlers()
 
     def _setup_handlers(self):
         self.client = mqtt.Client(client_id=self.client_id, transport=self.transport)
         if self.username is not None:
-            self.client.username_pw_set(self.username, password = self.password)
-        
+            self.client.username_pw_set(self.username, password=self.password)
+
+        # Construct a prefix topic path
+        if self.topic_prefix:
+            if not self.topic_prefix.startswith("/"):
+                self.topic_prefix = "/" + self.topic_prefix
+            if self.topic_prefix.endswith("/"):
+                self.topic_prefix = self.topic_prefix[:-1]
+
         def on_connect(client, userdata, flags, rc):
             self.logger.info("Connected with result code  %s", rc)
+
             # subscribe to /node_name/wildcard
             for node_name in self.node_names:
-                topic = "/{node_name}/#".format(node_name=node_name)
+                topic = "{topic_prefix}/{node_name}/#".format(topic_prefix=self.topic_prefix, node_name=node_name)
                 self.logger.info(
                     "Subscribing to topic %s for node_name %s", topic, node_name)
                 client.subscribe(topic)
@@ -109,7 +118,8 @@ class MQTTSource(MessageSource):
                 "Received MQTT message for topic %s with payload %s", msg.topic, msg.payload)
             token_pattern = r'(?:\w|-|\.)+'
             regex = re.compile(
-                r'/(?P<node_name>' + token_pattern + ')/(?P<measurement_name>' + token_pattern + ')/?')
+                r"{topic_prefix}/(?P<node_name>{token_pattern})/(?P<measurement_name>{token_pattern})/?".format(
+                    topic_prefix=self.topic_prefix, token_pattern=token_pattern))
             match = regex.match(msg.topic)
             if match is None:
                 self.logger.warn(
@@ -118,7 +128,8 @@ class MQTTSource(MessageSource):
             node_name = match.group('node_name')
             if node_name not in self.node_names:
                 self.logger.warn(
-                    "Extract node_name %s from topic, but requested to receive messages for node_names %s", node_name, str(self.node_names))
+                    "Extract node_name %s from topic, but requested to receive messages for node_names %s", node_name,
+                    str(self.node_names))
             measurement_name = match.group('measurement_name')
 
             value = msg.payload
@@ -171,6 +182,7 @@ def main():
     parser.add_argument('--mqtt-pass-file', required=False, help='MQTT user password file')
     parser.add_argument('--mqtt-client-id', default="", help='MQTT client id')
     parser.add_argument('--mqtt-transport', default="tcp", help='MQTT transport')
+    parser.add_argument('--mqtt-topic-prefix', default="", help='MQTT topic prefix')
     parser.add_argument('--influx-host', required=True, help='InfluxDB host')
     parser.add_argument('--influx-port', default="8086", help='InfluxDB port')
     parser.add_argument('--influx-user', required=True,
@@ -192,14 +204,15 @@ def main():
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     store = InfluxStore(host=args.influx_host, port=args.influx_port,
-            username=args.influx_user, password_file=args.influx_pass_file, database=args.influx_db)
-    source = MQTTSource(host=args.mqtt_host, port=args.mqtt_port, 
+                        username=args.influx_user, password_file=args.influx_pass_file, database=args.influx_db)
+    source = MQTTSource(host=args.mqtt_host, port=args.mqtt_port,
                         username=args.mqtt_user, password_file=args.mqtt_pass_file,
                         client_id=args.mqtt_client_id, transport=args.mqtt_transport,
-                        node_names=args.node_name,
-                        stringify_values_for_measurements=args.stringify_values_for_measurements)
+                        node_names=args.node_name, topic_prefix=args.mqtt_topic_prefix,
+                        stringify_values_for_measurements = args.stringify_values_for_measurements)
     source.register_store(store)
     source.start()
+
 
 if __name__ == '__main__':
     main()
